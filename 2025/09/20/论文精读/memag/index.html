@@ -1,0 +1,558 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs | Kirihara</title><meta name="author" content="Kirihara"><meta name="copyright" content="Kirihara"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="MEMAG: Memory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs 背景 现有内存优化技术的局限性 深度神经网络（DNN）的内存优化技术主要分为两类：时间维度优化（图调度）和空间维度优化（图变换），但两者均存在显著缺陷： 图调度技术（如重计算、换入换出）通过调整张量生命周期减少内存占">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs">
+<meta property="og:url" content="https://kirihara-yun.github.io/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/index.html">
+<meta property="og:site_name" content="Kirihara">
+<meta property="og:description" content="MEMAG: Memory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs 背景 现有内存优化技术的局限性 深度神经网络（DNN）的内存优化技术主要分为两类：时间维度优化（图调度）和空间维度优化（图变换），但两者均存在显著缺陷： 图调度技术（如重计算、换入换出）通过调整张量生命周期减少内存占">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kirihara-yun.github.io/img/huiyuanai.png">
+<meta property="article:published_time" content="2025-09-20T08:00:00.000Z">
+<meta property="article:modified_time" content="2025-09-20T09:21:30.464Z">
+<meta property="article:author" content="Kirihara">
+<meta property="article:tag" content="内存优化">
+<meta property="article:tag" content="图变换">
+<meta property="article:tag" content="访问模式">
+<meta property="article:tag" content="深度学习">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kirihara-yun.github.io/img/huiyuanai.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs",
+  "url": "https://kirihara-yun.github.io/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/",
+  "image": "https://kirihara-yun.github.io/img/huiyuanai.png",
+  "datePublished": "2025-09-20T08:00:00.000Z",
+  "dateModified": "2025-09-20T09:21:30.464Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Kirihara",
+      "url": "https://kirihara-yun.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/huiyuanai.png"><link rel="canonical" href="https://kirihara-yun.github.io/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!true && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: Kirihara","link":"链接: ","source":"来源: Kirihara","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"><link href="https://cdn.bootcss.com/KaTeX/0.11.1/katex.min.css" rel="stylesheet" /></head><body><div id="web_bg" style="background-image: url(/img/fushishan.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/huiyuanai.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">16</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">27</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fa-list"></i><span> List</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> Music</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> Movie</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> Link</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/fushishan.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><img class="site-icon" src="https://img2.baidu.com/it/u=1933325124,3739680221&amp;fm=253&amp;fmt=auto&amp;app=138&amp;f=JPEG?w=500&amp;h=500" alt="Logo"><span class="site-name">Kirihara</span></a><a class="nav-page-title" href="/"><span class="site-name">MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fa-list"></i><span> List</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> Music</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> Movie</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> Link</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-09-20T08:00:00.000Z" title="发表于 2025-09-20 16:00:00">2025-09-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-09-20T09:21:30.464Z" title="更新于 2025-09-20 17:21:30">2025-09-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E6%9C%AF%E8%AE%BA%E6%96%87/">学术论文</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1>MEMAG: Memory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs</h1>
+<h2 id="背景">背景</h2>
+<h3 id="现有内存优化技术的局限性">现有内存优化技术的局限性</h3>
+<p>深度神经网络（DNN）的内存优化技术主要分为两类：时间维度优化（图调度）和空间维度优化（图变换），但两者均存在显著缺陷：</p>
+<p>图调度技术（如重计算、换入换出）通过调整张量生命周期减少内存占用，但无法改变张量的空间属性。例如，一个形状为[1024, 1024]的张量，无论何时调度，其单次存储所需的4MB内存是固定的。在大张量场景下，这类技术优化效果有限，且会引入额外计算或传输开销。</p>
+<p>图变换技术（如算子融合、分裂）通过改变张量形状或图结构优化内存，但现有方法存在<strong>访问模式感知缺失</strong>的关键问题：</p>
+<ul>
+<li>仅关注张量形状拆分，忽视内存布局对访问效率的影响；</li>
+<li>未考虑算子对内存访问模式的敏感性差异；</li>
+<li>分裂变换可能破坏内存连续性，导致硬件利用率暴跌。</li>
+</ul>
+<h3 id="内存访问与计算效率的协同挑战">内存访问与计算效率的协同挑战</h3>
+<p>现代GPU/CPU的计算能力提升远超内存带宽增长（如A100的40TFLOPS计算能力对应1.5TB/s带宽），内存访问效率已成为性能瓶颈。现有图变换技术因缺乏对内存访问模式的建模，导致&quot;内存节省&quot;与&quot;计算效率&quot;难以兼得：</p>
+<ul>
+<li>分裂大张量虽降低内存峰值，但非连续访问使带宽利用率从80%降至40%以下；</li>
+<li>算子融合提升计算效率，却可能因内存局部性破坏导致延迟增加。</li>
+</ul>
+<p>为此，本文提出<strong>MEMAG（Memory-Efficient Graph Transformation）</strong>，一种基于访问模式感知的图级优化框架。MEMAG通过建立&quot;张量布局-访问模式-算子特性&quot;的关联模型，实现内存节省与计算效率的协同优化，突破现有技术的固有矛盾。</p>
+<h2 id="引言">引言</h2>
+<p>DNN模型的内存消耗与计算效率已成为制约其部署与应用的核心瓶颈，主要源于三个方面：</p>
+<ol>
+<li>
+<p><strong>超大张量的内存占用</strong>：Transformer的多头注意力层中，<code>QK^T</code>矩阵（<code>seq_len=4096</code>）单头占用64MB，32头合计达2GB；高分辨率图像模型的特征图（如1024×1024）单张占用4MB，批量处理时内存需求呈线性增长。</p>
+</li>
+<li>
+<p><strong>长生命周期张量的累积效应</strong>：模型参数（如BERT-large的3.4亿参数占用13.6GB）、训练过程中的激活值（生命周期贯穿反向传播）、多分支结构的中间张量，共同推高内存峰值。</p>
+</li>
+<li>
+<p><strong>内存访问效率的严重损耗</strong>：GPU内存采用分层架构（寄存器→L2缓存→全局内存），连续访问可提升缓存命中率达70%以上，而碎片化访问会导致命中率降至30%以下，计算核心因数据饥饿闲置。</p>
+</li>
+</ol>
+<h3 id="现有技术的核心缺陷">现有技术的核心缺陷</h3>
+<ul>
+<li>
+<p><strong>图调度技术</strong>：以重计算为例，虽能减少激活值存储，但重复计算会增加30%以上的延迟；换入换出则受限于PCIe带宽，在单卡环境下无法通过异步传输隐藏延迟。</p>
+</li>
+<li>
+<p><strong>图变换技术</strong>：MAGIS等框架的分裂变换仅基于维度可分性决策，未考虑内存布局。实验显示，对Transformer的注意力层应用分裂后，内存峰值降低70%，但因访问碎片化导致延迟增加25%。</p>
+</li>
+<li>
+<p><strong>硬件感知优化</strong>：现有工作多聚焦计算密集型算子（如GEMM）的底层优化，缺乏图级别的内存访问协同策略，无法全局优化访问模式。</p>
+</li>
+</ul>
+<h3 id="memag的创新思路">MEMAG的创新思路</h3>
+<p>MEMAG的核心突破在于将<strong>内存访问模式</strong>引入图级中间表示与优化决策，具体包括：</p>
+<ol>
+<li>
+<p>构建<strong>访问感知图（Access-Aware Graph, AA-Graph）</strong>，在计算图中嵌入张量布局、访问模式、算子敏感性等关键属性；</p>
+</li>
+<li>
+<p>设计<strong>局部性保持变换规则</strong>，确保分裂/融合等操作不破坏内存连续性，维持高带宽利用率；</p>
+</li>
+<li>
+<p>提出<strong>算子差异化优化策略</strong>，对带宽敏感算子（如矩阵乘法）严格保持访问模式，对容忍度高的算子（如ReLU）灵活优化以最大化内存节省。</p>
+</li>
+</ol>
+<h3 id="本文贡献">本文贡献</h3>
+<ol>
+<li>
+<p>提出AA-Graph中间表示，首次在图级别建立&quot;张量布局-访问模式-算子特性&quot;的关联模型，填补现有图表示在内存访问建模上的空白；</p>
+</li>
+<li>
+<p>设计局部性保持变换算法，通过连续性约束与维度评分机制，在减少内存峰值的同时维持高带宽利用率；</p>
+</li>
+<li>
+<p>实现MEMAG框架并在多种DNN模型上验证：相比现有方法，内存峰值降低65-75%，同时延迟增加控制在5%以内，帕累托边界优于MAGIS等先进技术。</p>
+</li>
+</ol>
+<h2 id="动机">动机</h2>
+<p>内存访问模式对DNN性能的影响可通过具体案例清晰展现，揭示现有图变换技术的固有缺陷：</p>
+<h3 id="案例1：transformer注意力层的分裂变换">案例1：Transformer注意力层的分裂变换</h3>
+<p>在A100上运行<code>seq_len=4096</code>的BERT模型：</p>
+<ul>
+<li><strong>原始计算</strong>：<code>QK^T</code>矩阵乘法的内存访问具有强连续性，单次事务加载32个连续元素，带宽利用率达82%，计算延迟12ms；</li>
+<li><strong>传统分裂（n=8）</strong>：按<code>seq_len</code>均匀拆分后，子张量地址非连续，每次事务仅能有效利用4个元素，带宽利用率降至39%，延迟增至15ms（+25%）；</li>
+<li><strong>MEMAG优化</strong>：沿连续存储维度拆分，保持子张量地址连续性，带宽利用率维持76%，延迟12.6ms（+5%）。</li>
+</ul>
+<h3 id="案例2：resnet卷积层的融合变换">案例2：ResNet卷积层的融合变换</h3>
+<ul>
+<li><strong>原始计算</strong>：3×3卷积+ReLU的独立执行，存在两次内存读写，延迟8ms；</li>
+<li><strong>传统融合</strong>：合并为单算子但改变内存布局（从NHWC转为NCHW），导致访问碎片化，延迟增至9.5ms（+19%）；</li>
+<li><strong>MEMAG优化</strong>：融合时保持NHWC布局，连续访问特征图，延迟降至6.8ms（-15%）。</li>
+</ul>
+<h3 id="核心发现">核心发现</h3>
+<ol>
+<li>
+<p><strong>内存布局决定访问效率</strong>：张量的物理存储格式（如NHWC/NCHW、块对齐方式）直接影响访问连续性，相同逻辑形状的张量可能因布局不同导致2-3倍的性能差异；</p>
+</li>
+<li>
+<p><strong>算子敏感性呈两极分化</strong>：矩阵乘法、卷积等算子的延迟与带宽利用率呈强线性相关（相关系数&gt;0.9），而激活函数、池化等算子对访问模式敏感度低（相关系数&lt;0.3）；</p>
+</li>
+<li>
+<p><strong>变换粒度存在临界值</strong>：当分裂粒度小于GPU内存事务对齐粒度（如256B）时，带宽利用率会断崖式下降，这一临界值因算子类型而异。</p>
+</li>
+</ol>
+<p>这些发现表明：图变换必须<strong>将内存访问模式纳入决策模型</strong>，而现有方法的中间表示缺乏此类信息，导致优化效果受限。MEMAG通过构建访问感知图，实现了内存节省与效率保持的协同。</p>
+<h2 id="系统框架">系统框架</h2>
+<p>MEMAG框架由四个核心组件构成：<strong>访问感知图生成器（AAG-Generator）</strong>、<strong>内存特性分析器（M-Analyzer）</strong>、<strong>局部性保持优化器（LPO）</strong>、<strong>增量调度器（IS）</strong>，整体架构如图1所示。</p>
+<h3 id="aag-generator-访问感知图生成器">AAG-Generator（访问感知图生成器）</h3>
+<p>负责将原始计算图转换为包含内存访问信息的AA-Graph，核心是为张量和算子添加扩展属性：</p>
+<h4 id="1-张量节点属性">1. 张量节点属性</h4>
+<ul>
+<li><code>mem_layout</code>：存储格式（<code>&quot;NHWC&quot;</code>/<code>&quot;NCHW&quot;</code>/<code>&quot;blocked_16x16&quot;</code>）、内存起始偏移量（<code>offset=0x7f...</code>）、对齐方式（<code>align=256B</code>）；</li>
+<li><code>dim_contiguity</code>：各维度的连续性标记（<code>True</code>/<code>False</code>），如NHWC的H/W维度为连续，C维度为非连续；</li>
+<li><code>access_footprint</code>：访问区域掩码（如<code>[0..511, 0..4095]</code>表示连续行访问）；</li>
+<li><code>element_size</code>：元素字节数（如FP16为2B）。</li>
+</ul>
+<h4 id="2-算子节点属性">2. 算子节点属性</h4>
+<ul>
+<li><code>access_pattern</code>：访问模式（<code>&quot;strided&quot;</code>连续访问/<code>&quot;random&quot;</code>随机访问/<code>&quot;strided2D&quot;</code>二维连续访问）；</li>
+<li><code>bandwidth_sensitivity</code>：带宽敏感系数（0-1，矩阵乘法0.9/卷积0.8/ReLU0.3）；</li>
+<li><code>output_layout</code>：输出张量的存储格式（如卷积算子默认输出<code>&quot;NCHW&quot;</code>）；</li>
+<li><code>latency_model</code>：延迟模型（<code>a×B + b</code>，其中<code>B</code>为带宽利用率，<code>a/b</code>为算子特定系数）。</li>
+</ul>
+<h3 id="m-analyzer-内存特性分析器">M-Analyzer（内存特性分析器）</h3>
+<p>基于AA-Graph分析内存访问特性，为优化决策提供依据：</p>
+<ol>
+<li>
+<p><strong>连续性评估</strong>：对每个张量维度计算连续性得分：<br>
+[ \text{contiguity}(d) = \frac{\text{连续访问字节数}}{\text{总访问字节数}} ]<br>
+得分越高，该维度越适合作为分裂维度。</p>
+</li>
+<li>
+<p><strong>带宽敏感性排序</strong>：根据<code>bandwidth_sensitivity</code>对算子排序，识别需要优先保持访问模式的关键算子。</p>
+</li>
+<li>
+<p><strong>内存热点定位</strong>：结合张量大小与生命周期，识别内存峰值贡献最大的子图（内存热点），优先对其应用优化。</p>
+</li>
+</ol>
+<h3 id="lpo-局部性保持优化器">LPO（局部性保持优化器）</h3>
+<p>实现核心的图变换逻辑，包括分裂、融合等操作，核心是<strong>局部性保持规则</strong>：</p>
+<h4 id="1-分裂变换决策">1. 分裂变换决策</h4>
+<ul>
+<li><strong>维度选择</strong>：优先选择<code>dim_contiguity=True</code>的维度，且分裂后子张量的<code>access_footprint</code>必须为连续区间；</li>
+<li><strong>粒度控制</strong>：子张量大小不得小于临界值（如256B），对高敏感算子（系数&gt;0.7）需满足<code>子张量大小 ≥ 32×element_size</code>；</li>
+<li><strong>评分函数</strong>：<br>
+[ \text{score}(d) = \alpha \cdot \text{mem_saving}(d) + (1-\alpha) \cdot \text{contiguity}(d) ]<br>
+其中<code>mem_saving</code>为内存节省率，<code>α</code>为平衡系数（默认0.5）。</li>
+</ul>
+<h4 id="2-融合变换决策">2. 融合变换决策</h4>
+<ul>
+<li>仅融合访问模式兼容的算子（如均为<code>&quot;strided&quot;</code>访问）；</li>
+<li>融合后输出张量的<code>mem_layout</code>需保持与输入一致，避免布局转换导致的碎片化。</li>
+</ul>
+<h4 id="3-算子差异化策略">3. 算子差异化策略</h4>
+<ul>
+<li>高敏感算子（系数&gt;0.7）：严格遵循局部性规则，允许内存节省率适度降低（如从75%降至70%）；</li>
+<li>低敏感算子（系数&lt;0.3）：可灵活拆分以最大化内存节省，容忍带宽利用率下降。</li>
+</ul>
+<h3 id="is-增量调度器">IS（增量调度器）</h3>
+<p>基于AA-Graph的访问特性优化调度顺序：</p>
+<ul>
+<li>对高敏感算子的子图优先调度，利用缓存局部性；</li>
+<li>调整Store/Load算子位置，确保数据换入时已按连续地址排列；</li>
+<li>继承MAGIS的增量调度思想，仅重新调度受变换影响的子图，降低开销。</li>
+</ul>
+<h2 id="aag-generator的形式化定义">AAG-Generator的形式化定义</h2>
+<h3 id="访问感知图-aa-graph">访问感知图（AA-Graph）</h3>
+<p>AA-Graph被形式化为一个有向图( G = (V_T \cup V_O, E) )，其中：</p>
+<ul>
+<li>( V_T )为张量节点集合，每个节点( t \in V_T )关联属性集合( A_T(t) = { \text{mem_layout}, \text{dim_contiguity}, … } )；</li>
+<li>( V_O )为算子节点集合，每个节点( o \in V_O )关联属性集合( A_O(o) = { \text{access_pattern}, \text{bandwidth_sensitivity}, … } )；</li>
+<li>( E \subseteq (V_T \times V_O) \cup (V_O \times V_T) )为数据依赖边，表示算子与输入/输出张量的关联。</li>
+</ul>
+<h3 id="分裂变换的形式化">分裂变换的形式化</h3>
+<p>分裂变换( f = (S, d, n) )需满足：</p>
+<ol>
+<li><strong>基础约束</strong>（继承MAGIS）：弱连通性、凸性、无冗余计算；</li>
+<li><strong>连续性约束</strong>：张量( t \in S )的维度( d )满足( \text{dim_contiguity}(t, d) = \text{True} )；</li>
+<li><strong>粒度约束</strong>：( \text{size}(t, d)/n \geq \text{critical_size}(o) )，其中( o \in S )为算子，( \text{critical_size} )为其临界粒度。</li>
+</ol>
+<h3 id="带宽利用率模型">带宽利用率模型</h3>
+<p>给定算子( o )及其访问的张量( t )，带宽利用率( U )定义为：<br>
+[ U = \frac{\sum_{i=1}^k \text{contiguous_length}(t, i)}{\sum_{i=1}^k \text{access_length}(t, i)} ]<br>
+其中( \text{contiguous_length}(t, i) )为第( i )次访问的连续字节数，( \text{access_length}(t, i) )为总访问字节数。</p>
+<h2 id="m-analyzer的实现">M-Analyzer的实现</h2>
+<h3 id="内存热点分析">内存热点分析</h3>
+<p>基于张量的生命周期与大小，计算每个子图的内存贡献：<br>
+[ \text{hotness}(S) = \sum_{t \in \text{live}(S)} \text{size}(t) \times \text{duration}(t) ]<br>
+其中( \text{live}(S) )为子图( S )执行期间存活的张量集合，( \text{duration}(t) )为存活时间。热点子图（( \text{hotness}(S) &gt; \theta )）将被优先优化。</p>
+<h3 id="算子敏感性计算">算子敏感性计算</h3>
+<p>通过硬件 profiling 建立算子延迟与带宽利用率的关系模型：<br>
+[ \text{latency}(o, U) = a_o \times (1 - U) + b_o ]<br>
+其中( a_o )和( b_o )为算子特定参数，通过线性回归拟合。带宽敏感系数定义为( a_o / (a_o + b_o) )，反映延迟对带宽的敏感程度。</p>
+<h2 id="lpo的优化算法">LPO的优化算法</h2>
+<h3 id="分裂变换算法">分裂变换算法</h3>
+<ol>
+<li>输入：AA-Graph ( G )、内存热点子图( S )、最大分裂数( n_{\text{max}} )；</li>
+<li>对( S )中所有张量( t )，收集满足( \text{dim_contiguity}(t, d) = \text{True} )的维度( d )；</li>
+<li>对每个候选维度( d )，计算不同分裂数( n )下的( \text{score}(d, n) )；</li>
+<li>选择最高分对应的( (d, n) )，执行分裂变换；</li>
+<li>验证分裂后子张量的连续性，若不满足则回溯调整。</li>
+</ol>
+<h3 id="融合变换算法">融合变换算法</h3>
+<ol>
+<li>输入：AA-Graph ( G )、连续算子序列( o_1, o_2, …, o_k )；</li>
+<li>检查算子访问模式是否兼容（均为连续访问）；</li>
+<li>评估融合后输出张量的布局是否保持连续性；</li>
+<li>若满足条件，执行融合并更新AA-Graph属性。</li>
+</ol>
+<h2 id="实验结果">实验结果</h2>
+<h3 id="实验设置">实验设置</h3>
+<ul>
+<li>硬件：NVIDIA A100（40GB）、Intel Xeon 8380（28核）；</li>
+<li>模型：BERT-base（<code>seq_len=4096</code>）、ResNet-50（<code>input=1024x1024</code>）、GPT-2（<code>seq_len=1024</code>）、YOLOv5（<code>input=640x640</code>）；</li>
+<li>基线方法：原始计算图（Baseline）、MAGIS、TASO、AutoTVM。</li>
+</ul>
+<h3 id="核心指标">核心指标</h3>
+<ul>
+<li>内存峰值（GB）：通过<code>nvidia-smi</code>监控；</li>
+<li>端到端延迟（ms）：通过高精度计时器测量；</li>
+<li>带宽利用率（%）：实际带宽/理论带宽（A100为1.5TB/s）；</li>
+<li>帕累托边界：内存-延迟双目标优化的最优前沿。</li>
+</ul>
+<h3 id="主要结果">主要结果</h3>
+<h4 id="1-单模型性能对比-bert-base">1. 单模型性能对比（BERT-base）</h4>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>内存峰值</th>
+<th>延迟</th>
+<th>带宽利用率</th>
+<th>内存降低</th>
+<th>延迟变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Baseline</td>
+<td>8.2GB</td>
+<td>12.0ms</td>
+<td>82%</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>MAGIS</td>
+<td>2.1GB</td>
+<td>15.0ms</td>
+<td>39%</td>
+<td>74%</td>
+<td>+25%</td>
+</tr>
+<tr>
+<td>TASO</td>
+<td>7.8GB</td>
+<td>10.5ms</td>
+<td>79%</td>
+<td>5%</td>
+<td>-12%</td>
+</tr>
+<tr>
+<td>MEMAG</td>
+<td>2.3GB</td>
+<td>12.6ms</td>
+<td>76%</td>
+<td>72%</td>
+<td>+5%</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2-多模型内存降低率-固定延迟增加-10">2. 多模型内存降低率（固定延迟增加&lt;10%）</h4>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>MAGIS</th>
+<th>TASO</th>
+<th>AutoTVM</th>
+<th>MEMAG</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BERT-base</td>
+<td>74%</td>
+<td>5%</td>
+<td>8%</td>
+<td>72%</td>
+</tr>
+<tr>
+<td>ResNet-50</td>
+<td>75%</td>
+<td>12%</td>
+<td>15%</td>
+<td>73%</td>
+</tr>
+<tr>
+<td>GPT-2</td>
+<td>68%</td>
+<td>7%</td>
+<td>10%</td>
+<td>65%</td>
+</tr>
+<tr>
+<td>YOLOv5</td>
+<td>70%</td>
+<td>10%</td>
+<td>12%</td>
+<td>68%</td>
+</tr>
+</tbody>
+</table>
+<h4 id="3-帕累托边界对比">3. 帕累托边界对比</h4>
+<p>在BERT模型上，MEMAG的帕累托边界显著优于其他方法：</p>
+<ul>
+<li>当内存限制为2GB时，MEMAG延迟（14.2ms）比MAGIS（18.5ms）低23%；</li>
+<li>当延迟限制为13ms时，MEMAG内存（2.8GB）比MAGIS（3.5GB）低20%。</li>
+</ul>
+<h3 id="结果分析">结果分析</h3>
+<ul>
+<li>MEMAG在内存降低率上与MAGIS相当（72% vs 74%），但延迟增加仅为MAGIS的1/5（5% vs 25%），核心原因是带宽利用率提升了37个百分点（76% vs 39%）；</li>
+<li>对带宽敏感的模型（如BERT、ResNet），MEMAG的优化效果更显著，而对低敏感模型（如YOLOv5），优势相对缩小但仍保持领先；</li>
+<li>算子差异化策略有效：对矩阵乘法的优化使延迟降低20-25%，而对ReLU的灵活拆分确保了内存节省率。</li>
+</ul>
+<h2 id="相关工作">相关工作</h2>
+<h3 id="图调度技术">图调度技术</h3>
+<ul>
+<li><strong>重计算</strong>：Chen等人提出的Checkpointing技术通过选择性重计算激活值减少内存，但其未考虑重计算过程中的内存访问效率；</li>
+<li><strong>换入换出</strong>：Xu等人设计的FlexFlow支持张量动态换入换出，但单卡环境下无法隐藏传输延迟。</li>
+</ul>
+<h3 id="图变换技术">图变换技术</h3>
+<ul>
+<li><strong>MAGIS</strong>：协调图变换与调度实现内存优化，但缺乏访问模式感知，导致单卡效率损失；</li>
+<li><strong>TASO</strong>：通过算子融合提升计算效率，但未针对内存峰值优化；</li>
+<li><strong>AutoGraph</strong>：自动搜索最优计算图，但搜索空间未包含内存访问相关特征。</li>
+</ul>
+<h3 id="硬件感知优化">硬件感知优化</h3>
+<ul>
+<li><strong>TVM/AutoTVM</strong>：基于硬件特性优化算子实现，但聚焦于单个算子而非图级协同；</li>
+<li><strong>Alchemist</strong>：优化张量布局提升缓存利用率，但未与图变换结合。</li>
+</ul>
+<p>MEMAG与现有工作的核心区别在于：首次在图级别建立内存访问模式的关联模型，实现全局的&quot;内存-效率&quot;协同优化。</p>
+<h2 id="结论">结论</h2>
+<p>本文提出MEMAG，一种基于访问模式感知的图级优化框架，通过构建AA-Graph中间表示，实现了DNN模型内存节省与计算效率的协同提升。MEMAG的核心创新在于将内存访问模式纳入图变换决策，设计局部性保持规则与算子差异化策略，解决了现有技术中&quot;内存节省伴随效率损失&quot;的固有矛盾。</p>
+<p>实验表明，MEMAG在多种DNN模型上实现65-75%的内存峰值降低，同时延迟增加控制在5%以内，帕累托边界显著优于MAGIS等先进技术。未来工作将扩展至动态形状场景（如可变序列长度），并探索基于学习的访问模式预测方法。</p>
+<p>MEMAG为DNN内存优化提供了新范式，证明图级优化必须兼顾内存空间属性与访问效率，这一思路可推广至更广泛的硬件平台与模型类型。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kirihara-yun.github.io">Kirihara</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kirihara-yun.github.io/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/">https://kirihara-yun.github.io/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kirihara-yun.github.io" target="_blank">Kirihara</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96/">内存优化</a><a class="post-meta__tags" href="/tags/%E5%9B%BE%E5%8F%98%E6%8D%A2/">图变换</a><a class="post-meta__tags" href="/tags/%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F/">访问模式</a><a class="post-meta__tags" href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a></div><div class="post-share"><div class="social-share" data-image="/img/huiyuanai.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/09/25/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/372%E8%B6%85%E7%BA%A7%E6%AC%A1%E6%96%B9/" title="372超级次方"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">372超级次方</div></div><div class="info-2"><div class="info-item-1">372超级次方 题目描述 你的任务是对a的b次方mod1337取模，其中a是一个正整数，b是一个非常大的数并且会以数组形式给出。 题目分析 核心难点在于b是一个非常大的数并且没有办法使用整数来表示，所以我们需要使用递归的方式来解决这个问题。 解题的关键在于两条数学性质： （1）ab mod p = (a mod p) * (b mod p) mod p; （2）a^(10+b) mod p = (a^10 mod p)(a^b mod p) mod p; 解题思路 （1）指数分解：将数组b按位分解，例如b = [1,2,3],则b表示的数字为123，我们将其分解为1001+102+3=123; （2）快速幂：使用快速幂算法计算a^b mod p; （3）递归取模：递归地计算(a^10 mod p)*(a^b mod p) mod p;每一步都严格取模。 算法步骤 （1）初始化result = 1,以及a = a % mod; （2）判断是否b为0，若为0则返回result; （3）递归计算b的每一位数字,result = (result^10 mod p)*(a^b(当前位)mo...</div></div></div></a><a class="pagination-related" href="/2025/09/18/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/384%E6%89%93%E4%B9%B1%E6%95%B0%E7%BB%84/" title="384. 打乱数组"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">384. 打乱数组</div></div><div class="info-2"><div class="info-item-1">实现一个类，支持初始化数组，重置数组至初始状态，以及随机打乱数组</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2025/09/10/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/magis/" title="MAGIS Memory Optimization via Coordinated Graph Transformation and Scheduling for DNN"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-10</div><div class="info-item-2">MAGIS Memory Optimization via Coordinated Graph Transformation and Scheduling for DNN</div></div><div class="info-2"><div class="info-item-1">MAGIS: Memory Optimization via Coordinated Graph Transformation and Scheduling for DNN 背景 图调度的局限性 图调度技术（如张量重计算、张量换入与换出）的核心是时间维度的优化,通过调整张量的生命周期，减少内存占用，但是这无法改变张量本身的空间属性。例如：一个形状为[1024,1024]的张量，无论何时调度，其单次存储所需的内存大小都是固定的，即1024*1024*4=4MB。这导致在大形状张量场景下优化效果有限，重计算、换入/换出会增加额外的计算开销，显著牺牲性能。  图变换的孤立性 图变换（如算子融合、分裂、维度重排）的核心是空间维度优化--通过改变张量形状或图结构（如合并连续算子以减少中间张量）提升计算效率，但目前这类技术仅作为性能优化工具独立使用，未与内存需求联动。  为此本文提出–MAGIS，一个协调图变换与图调度的DNN内存优化框架。MAGIS采用层次树（Hierarchical tree）表示分裂变换，这类变换能有效减小子图中的张量形状规模。为了控制复杂度，MAGIS基于图结构分析构...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/huiyuanai.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Kirihara</div><div class="author-info-description">喜欢您来</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">16</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">27</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Kirihara-Yun"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Kirihara-Yun" target="_blank" title=""><i class="fab fa-github"></i></a><a class="social-icon" href="/qinzhy26@mail2.sysu.edu.cn" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #000000;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">希望您天天开心</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text">MEMAG: Memory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96%E6%8A%80%E6%9C%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.1.1.</span> <span class="toc-text">现有内存优化技术的局限性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E4%B8%8E%E8%AE%A1%E7%AE%97%E6%95%88%E7%8E%87%E7%9A%84%E5%8D%8F%E5%90%8C%E6%8C%91%E6%88%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">内存访问与计算效率的协同挑战</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%95%E8%A8%80"><span class="toc-number">1.2.</span> <span class="toc-text">引言</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E6%8A%80%E6%9C%AF%E7%9A%84%E6%A0%B8%E5%BF%83%E7%BC%BA%E9%99%B7"><span class="toc-number">1.2.1.</span> <span class="toc-text">现有技术的核心缺陷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#memag%E7%9A%84%E5%88%9B%E6%96%B0%E6%80%9D%E8%B7%AF"><span class="toc-number">1.2.2.</span> <span class="toc-text">MEMAG的创新思路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E6%96%87%E8%B4%A1%E7%8C%AE"><span class="toc-number">1.2.3.</span> <span class="toc-text">本文贡献</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%9C%BA"><span class="toc-number">1.3.</span> <span class="toc-text">动机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A1%88%E4%BE%8B1%EF%BC%9Atransformer%E6%B3%A8%E6%84%8F%E5%8A%9B%E5%B1%82%E7%9A%84%E5%88%86%E8%A3%82%E5%8F%98%E6%8D%A2"><span class="toc-number">1.3.1.</span> <span class="toc-text">案例1：Transformer注意力层的分裂变换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A1%88%E4%BE%8B2%EF%BC%9Aresnet%E5%8D%B7%E7%A7%AF%E5%B1%82%E7%9A%84%E8%9E%8D%E5%90%88%E5%8F%98%E6%8D%A2"><span class="toc-number">1.3.2.</span> <span class="toc-text">案例2：ResNet卷积层的融合变换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E5%8F%91%E7%8E%B0"><span class="toc-number">1.3.3.</span> <span class="toc-text">核心发现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E6%A1%86%E6%9E%B6"><span class="toc-number">1.4.</span> <span class="toc-text">系统框架</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#aag-generator-%E8%AE%BF%E9%97%AE%E6%84%9F%E7%9F%A5%E5%9B%BE%E7%94%9F%E6%88%90%E5%99%A8"><span class="toc-number">1.4.1.</span> <span class="toc-text">AAG-Generator（访问感知图生成器）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%BC%A0%E9%87%8F%E8%8A%82%E7%82%B9%E5%B1%9E%E6%80%A7"><span class="toc-number">1.4.1.1.</span> <span class="toc-text">1. 张量节点属性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E7%AE%97%E5%AD%90%E8%8A%82%E7%82%B9%E5%B1%9E%E6%80%A7"><span class="toc-number">1.4.1.2.</span> <span class="toc-text">2. 算子节点属性</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#m-analyzer-%E5%86%85%E5%AD%98%E7%89%B9%E6%80%A7%E5%88%86%E6%9E%90%E5%99%A8"><span class="toc-number">1.4.2.</span> <span class="toc-text">M-Analyzer（内存特性分析器）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#lpo-%E5%B1%80%E9%83%A8%E6%80%A7%E4%BF%9D%E6%8C%81%E4%BC%98%E5%8C%96%E5%99%A8"><span class="toc-number">1.4.3.</span> <span class="toc-text">LPO（局部性保持优化器）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%88%86%E8%A3%82%E5%8F%98%E6%8D%A2%E5%86%B3%E7%AD%96"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">1. 分裂变换决策</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E8%9E%8D%E5%90%88%E5%8F%98%E6%8D%A2%E5%86%B3%E7%AD%96"><span class="toc-number">1.4.3.2.</span> <span class="toc-text">2. 融合变换决策</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E7%AE%97%E5%AD%90%E5%B7%AE%E5%BC%82%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.3.</span> <span class="toc-text">3. 算子差异化策略</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#is-%E5%A2%9E%E9%87%8F%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="toc-number">1.4.4.</span> <span class="toc-text">IS（增量调度器）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#aag-generator%E7%9A%84%E5%BD%A2%E5%BC%8F%E5%8C%96%E5%AE%9A%E4%B9%89"><span class="toc-number">1.5.</span> <span class="toc-text">AAG-Generator的形式化定义</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E6%84%9F%E7%9F%A5%E5%9B%BE-aa-graph"><span class="toc-number">1.5.1.</span> <span class="toc-text">访问感知图（AA-Graph）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E8%A3%82%E5%8F%98%E6%8D%A2%E7%9A%84%E5%BD%A2%E5%BC%8F%E5%8C%96"><span class="toc-number">1.5.2.</span> <span class="toc-text">分裂变换的形式化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%A6%E5%AE%BD%E5%88%A9%E7%94%A8%E7%8E%87%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.5.3.</span> <span class="toc-text">带宽利用率模型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#m-analyzer%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.6.</span> <span class="toc-text">M-Analyzer的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E7%83%AD%E7%82%B9%E5%88%86%E6%9E%90"><span class="toc-number">1.6.1.</span> <span class="toc-text">内存热点分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%97%E5%AD%90%E6%95%8F%E6%84%9F%E6%80%A7%E8%AE%A1%E7%AE%97"><span class="toc-number">1.6.2.</span> <span class="toc-text">算子敏感性计算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#lpo%E7%9A%84%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95"><span class="toc-number">1.7.</span> <span class="toc-text">LPO的优化算法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E8%A3%82%E5%8F%98%E6%8D%A2%E7%AE%97%E6%B3%95"><span class="toc-number">1.7.1.</span> <span class="toc-text">分裂变换算法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%9E%8D%E5%90%88%E5%8F%98%E6%8D%A2%E7%AE%97%E6%B3%95"><span class="toc-number">1.7.2.</span> <span class="toc-text">融合变换算法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E7%BB%93%E6%9E%9C"><span class="toc-number">1.8.</span> <span class="toc-text">实验结果</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.8.1.</span> <span class="toc-text">实验设置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E6%8C%87%E6%A0%87"><span class="toc-number">1.8.2.</span> <span class="toc-text">核心指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E8%A6%81%E7%BB%93%E6%9E%9C"><span class="toc-number">1.8.3.</span> <span class="toc-text">主要结果</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%8D%95%E6%A8%A1%E5%9E%8B%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94-bert-base"><span class="toc-number">1.8.3.1.</span> <span class="toc-text">1. 单模型性能对比（BERT-base）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E5%A4%9A%E6%A8%A1%E5%9E%8B%E5%86%85%E5%AD%98%E9%99%8D%E4%BD%8E%E7%8E%87-%E5%9B%BA%E5%AE%9A%E5%BB%B6%E8%BF%9F%E5%A2%9E%E5%8A%A0-10"><span class="toc-number">1.8.3.2.</span> <span class="toc-text">2. 多模型内存降低率（固定延迟增加&lt;10%）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E5%B8%95%E7%B4%AF%E6%89%98%E8%BE%B9%E7%95%8C%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.3.3.</span> <span class="toc-text">3. 帕累托边界对比</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.</span> <span class="toc-text">结果分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E5%B7%A5%E4%BD%9C"><span class="toc-number">1.9.</span> <span class="toc-text">相关工作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%BE%E8%B0%83%E5%BA%A6%E6%8A%80%E6%9C%AF"><span class="toc-number">1.9.1.</span> <span class="toc-text">图调度技术</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%BE%E5%8F%98%E6%8D%A2%E6%8A%80%E6%9C%AF"><span class="toc-number">1.9.2.</span> <span class="toc-text">图变换技术</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A1%AC%E4%BB%B6%E6%84%9F%E7%9F%A5%E4%BC%98%E5%8C%96"><span class="toc-number">1.9.3.</span> <span class="toc-text">硬件感知优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.10.</span> <span class="toc-text">结论</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/25/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/372%E8%B6%85%E7%BA%A7%E6%AC%A1%E6%96%B9/" title="372超级次方">372超级次方</a><time datetime="2025-09-24T16:00:00.000Z" title="发表于 2025-09-25 00:00:00">2025-09-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/25/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/436%E5%AF%BB%E6%89%BE%E5%8F%B3%E5%8C%BA%E9%97%B4/" title="436寻找右区间">436寻找右区间</a><time datetime="2025-09-24T16:00:00.000Z" title="发表于 2025-09-25 00:00:00">2025-09-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/20/%E8%AE%BA%E6%96%87%E7%B2%BE%E8%AF%BB/memag/" title="MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs">MEMAGmemory-Efficient Graph Transformation via Access Pattern-Aware Optimization for DNNs</a><time datetime="2025-09-20T08:00:00.000Z" title="发表于 2025-09-20 16:00:00">2025-09-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/18/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/318%E6%9C%80%E5%A4%A7%E5%8D%95%E8%AF%8D%E9%95%BF%E5%BA%A6%E4%B9%98%E7%A7%AF/" title="318. 最大单词长度乘积">318. 最大单词长度乘积</a><time datetime="2025-09-18T02:00:00.000Z" title="发表于 2025-09-18 10:00:00">2025-09-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/18/%E5%8A%9B%E6%89%A3%E5%88%B7%E9%A2%98/384%E6%89%93%E4%B9%B1%E6%95%B0%E7%BB%84/" title="384. 打乱数组">384. 打乱数组</a><time datetime="2025-09-18T02:00:00.000Z" title="发表于 2025-09-18 10:00:00">2025-09-18</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/fushishan.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 By Kirihara</span></div><div class="footer_custom_text">你终于找到我啦(*^▽^*)</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module"></script><div class="js-pjax"></div><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>(() => {
+  const pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+  window.pjax = new Pjax({
+    elements: 'a:not([target="_blank"])',
+    selectors: pjaxSelectors,
+    cacheBust: false,
+    analytics: false,
+    scrollRestoration: false
+  })
+
+  const triggerPjaxFn = (val) => {
+    if (!val) return
+    Object.values(val).forEach(fn => {
+      try {
+        fn()
+      } catch (err) {
+        console.debug('Pjax callback failed:', err)
+      }
+    })
+  }
+
+  document.addEventListener('pjax:send', () => {
+    // removeEventListener
+    btf.removeGlobalFnEvent('pjaxSendOnce')
+    btf.removeGlobalFnEvent('themeChange')
+
+    // reset readmode
+    const $bodyClassList = document.body.classList
+    if ($bodyClassList.contains('read-mode')) $bodyClassList.remove('read-mode')
+
+    triggerPjaxFn(window.globalFn.pjaxSend)
+  })
+
+  document.addEventListener('pjax:complete', () => {
+    btf.removeGlobalFnEvent('pjaxCompleteOnce')
+    document.querySelectorAll('script[data-pjax]').forEach(item => {
+      const newScript = document.createElement('script')
+      const content = item.text || item.textContent || item.innerHTML || ""
+      Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+      newScript.appendChild(document.createTextNode(content))
+      item.parentNode.replaceChild(newScript, item)
+    })
+
+    triggerPjaxFn(window.globalFn.pjaxComplete)
+  })
+
+  document.addEventListener('pjax:error', e => {
+    if (e.request.status === 404) {
+      const usePjax = true
+      true
+        ? (usePjax ? pjax.loadUrl('/404.html') : window.location.href = '/404.html')
+        : window.location.href = e.request.responseURL
+    }
+  })
+})()</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
